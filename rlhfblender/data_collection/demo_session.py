@@ -62,7 +62,7 @@ def run_env_session(session_id: str, demo_number: int, gym_env: str, seed: Union
     :return:
     """
     # Create the gym environment
-    env = gym.make(gym_env, render_mode="rgb_array")
+    env = gym.make(gym_env, render="rgb_array")
 
     obs_buffer = []
     rew_buffer = []

@@ -1,5 +1,4 @@
 from typing import List
-import numpy as np # for eval() we might have to import numpy
 
 from pydantic import BaseModel, field_validator
 

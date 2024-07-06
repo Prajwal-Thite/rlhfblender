@@ -12,7 +12,7 @@ from rlhfblender.utils.data_generation import generate_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate data for RLHFBlender")
-    parser.add_argument("--exp", type=str, help="The experiment name.")
+    parser.add_argument("--exp", type=str, help="The experiment name.", default='GFootballExperiment')
     parser.add_argument("--num-episodes", type=int, help="The number of episodes to run.", default=10)
 
     group = parser.add_mutually_exclusive_group()
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     benchmark_dicts = [
         {
-            "env_id": args.env,
+            "env_id":"11_vs_11_stochastic",
             "benchmark_type": "trained" if not args.random else "random",
             "benchmark_id": args.exp,
             "checkpoint_step": checkpoint,
@@ -47,5 +47,5 @@ if __name__ == "__main__":
         }
         for checkpoint in checkpoints
     ]
-
+    print(benchmark_dicts)
     asyncio.run(generate_data(benchmark_dicts))

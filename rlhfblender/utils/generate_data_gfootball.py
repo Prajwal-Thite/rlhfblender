@@ -1,21 +1,15 @@
-"""
-Make sure that the data for the demo is available, run at application startup.
-Expects pre-trained models in the experimentation directory. First runs benchmarks with the provided
-models, then creates video/thumbnail/reward data etc.
-"""
-
 import os
 import time
 from types import SimpleNamespace as sn
 from typing import Dict, List
-from gfootball.env import script_helpers
 
 import cv2
 import gymnasium as gym
 import numpy as np
 from databases import Database
 from pydantic import BaseModel
-import tempfile
+
+import gfootball.env as football_env
 
 from rlhfblender.data_collection import framework_selector as framework_selector
 from rlhfblender.data_collection.environment_handler import get_environment, initial_registration
@@ -28,41 +22,32 @@ BENCHMARK_DIR = "saved_benchmarks"
 
 database = Database(os.environ.get("RLHFBLENDER_DB_HOST", "sqlite:///rlhfblender.db"))
 
-
 def get_custom_thumbnail_creator(env_id: str):
     try:
         if "BabyAI" in env_id:
             from rlhfblender.utils.babyai_utils import trajectory_plotter as tp
 
             return tp.generate_thumbnail
-        #####################################################
-        elif "Football" in env_id:
-            from rlhfblender.utils.football_utils import trajectory_plotter as tp
-            return tp.generate_thumbnail
-###############################################################
     except Exception:
         return None
 
     return None
 
-
 class BenchmarkRequestModel(BaseModel):
     """
     A request model for a single benchmark run
     """
-
-    env_id: str = "11_vs_11_stochastic"
+    env_id: str
     path: str = ""
     benchmark_type: str = "random"
     benchmark_id: str = "GFootballExperiment"
     checkpoint_step: int = -1
     n_episodes: int = 1
     force_overwrite: bool = False
-    render: str = "rgb_array"
+    render: bool = True
     deterministic: bool = False
     reset_state: bool = False
     split_by_episode: bool = False
-
 
 # Run benchmarks with the provided models
 async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment]:
@@ -96,8 +81,8 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
                 exp_name=f"{benchmark_run.env_id}_{benchmark_run.framework}_{benchmark_run.benchmark_type}_Experiment",
                 env_id=benchmark_run.env_id,
                 framework=benchmark_run.framework,
-                created_timestamp=int(time.time()))
-            
+                created_timestamp=int(time.time()),
+            )
             await db_handler.add_entry(database, Experiment, exp)
 
         # add the current checkpoint to the experiment
@@ -160,7 +145,6 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
 
     return benchmarked_experiments
 
-
 # Now, create the video/thumbnail/reward data etc.
 def split_data(data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """Splits the data into episodes."""
@@ -174,14 +158,11 @@ def split_data(data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
 
     return episodes
 
-
 def encode_video(renders: np.ndarray, path: str) -> None:
     """
     Encodes renders of shape [n_frames, height, width, 3] into a .mp4 video and
     saves it at path.
     """
-    print("renders", renders.shape)
-    print(renders)
     # Create video in H264 format
     out = cv2.VideoWriter(
         f"{path}.mp4",
@@ -194,26 +175,6 @@ def encode_video(renders: np.ndarray, path: str) -> None:
         render = cv2.cvtColor(render, cv2.COLOR_RGB2BGR)
         out.write(render)
     out.release()
-
-def encode_video(renders: np.ndarray, path: str) -> None:
-    """
-    Encodes renders of shape [n_frames, height, width, 3] into a .mp4 video and
-    saves it at path.
-    """
-    # Create a temporary file to store the game dump
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".trace") as temp_file:
-        temp_trace_file = temp_file.name
-
-    # Save the renders to the temporary trace file
-    with open(temp_trace_file, "wb") as f:
-        for render in renders:
-            f.write(render.tobytes())
-
-    # Use the gfootball library to convert the trace file to a video
-    script_helpers.ScriptHelpers().dump_to_video(temp_trace_file, output_file=f"{path}.mp4")
-
-    # Remove the temporary trace file
-    os.remove(temp_trace_file)
 
 async def generate_data(benchmark_dicts: List[Dict]):
     """
@@ -262,17 +223,12 @@ async def generate_data(benchmark_dicts: List[Dict]):
             np.savez(f"{dir_name}/benchmark_{episode_idx}.npz", **save_episode)
             os.makedirs(f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}", exist_ok=True)
             np.save(f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}/rewards_{episode_idx}.npy", np.cumsum(episode_data["rewards"][episode_idx]))
- 
+
             # Save uncertainty data if available (for now, just use entropy from info dict)
             if "infos" in episode_data:
                 os.makedirs(f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}", exist_ok=True)
                 np.save(f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}/uncertainty_{episode_idx}.npy", np.array([info["entropy"] for info in episode_data["infos"][episode_idx]]))
-        print('episode renders : ',episode_data['renders'][0])
-        print('episode infos :',episode_data['infos'][0])
-        print("episode observations : ", episode_data["obs"][0])
 
-
-        print(episode_data.keys())
         # Create video
         for episode_idx, renders in enumerate(episode_data["renders"]):
             dir_name = f"{DATA_ROOT_DIR}/renders/{os.path.splitext(save_file_name)[0]}"
@@ -321,4 +277,31 @@ async def generate_data(benchmark_dicts: List[Dict]):
         os.remove(renders_file)
         os.remove(thumbnails_file)
 
+# Additional function to handle the special case for 11_vs_11_stochastic
+def generate_data_11_vs_11_stochastic():
+    env = football_env.create_environment(env_name="11_vs_11_stochastic", stacked=False, logdir='/tmp/football', write_goal_dumps=False, write_full_episode_dumps=False, render=False)
+    env.reset()
+    steps = 0
+    renders = []
+    while True:
+        obs, rew, done, info = env.step(env.action_space.sample())
+        renders.append(env.render(mode="rgb_array"))
+        steps += 1
+        if steps % 100 == 0:
+            print("Step %d Reward: %f" % (steps, rew))
+        if done:
+            break
 
+    print("Steps: %d Reward: %.2f" % (steps, rew))
+
+    # Save the renders as a video
+    os.makedirs(f"{DATA_ROOT_DIR}/renders/11_vs_11_stochastic", exist_ok=True)
+    encode_video(np.array(renders), f"{DATA_ROOT_DIR}/renders/11_vs_11_stochastic/0")
+
+# Main entry point
+if __name__ == "__main__":
+    import asyncio
+    if any(req['env_id'] == "11_vs_11_stochastic" for req in benchmark_dicts):
+        generate_data_11_vs_11_stochastic()
+    else:
+        asyncio.run(generate_data(benchmark_dicts))

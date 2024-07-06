@@ -1,0 +1,12 @@
+stable-baselines3[extra]>=2.2.1
+minigrid>=2.0.0
+highway-env>=1.8.2
+sb3-contrib>=2.2.1
+imitation>=1.0.0
+fastapi
+uvicorn
+databases[sqlite]
+python-multipart
+torch==2.1.1
+torchvision==0.16.1
+gym<=0.21.0
