@@ -7,3 +7,6 @@
 [submodule "football_env"]
 	path = football_env
 	url = https://github.com/Prajwal-Thite/football.git
+[submodule "football"]
+	path = football
+	url = https://github.com/Prajwal-Thite/football.git
