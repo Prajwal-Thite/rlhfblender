@@ -8,14 +8,12 @@ import os
 import time
 from types import SimpleNamespace as sn
 from typing import Dict, List
-from gfootball.env import script_helpers
 
 import cv2
 import gymnasium as gym
 import numpy as np
 from databases import Database
 from pydantic import BaseModel
-import tempfile
 
 from rlhfblender.data_collection import framework_selector as framework_selector
 from rlhfblender.data_collection.environment_handler import get_environment, initial_registration
@@ -35,11 +33,6 @@ def get_custom_thumbnail_creator(env_id: str):
             from rlhfblender.utils.babyai_utils import trajectory_plotter as tp
 
             return tp.generate_thumbnail
-        #####################################################
-        elif "Football" in env_id:
-            from rlhfblender.utils.football_utils import trajectory_plotter as tp
-            return tp.generate_thumbnail
-###############################################################
     except Exception:
         return None
 
@@ -51,14 +44,14 @@ class BenchmarkRequestModel(BaseModel):
     A request model for a single benchmark run
     """
 
-    env_id: str = "11_vs_11_stochastic"
+    env_id: str = ""
     path: str = ""
     benchmark_type: str = "random"
-    benchmark_id: str = "GFootballExperiment"
+    benchmark_id: str = ""
     checkpoint_step: int = -1
     n_episodes: int = 1
     force_overwrite: bool = False
-    render: str = "rgb_array"
+    render: bool = True
     deterministic: bool = False
     reset_state: bool = False
     split_by_episode: bool = False
@@ -69,7 +62,7 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
     """
     Run an agent in the provided environment with the given parameters. The experiment id only has to provided
     if benchmark_type trained is used.
-    :param request:
+    :param request (
     :return:
     """
     benchmarked_experiments = []
@@ -82,11 +75,10 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
                 database, Experiment, key=benchmark_run.benchmark_id, key_column="exp_name"
             )
             database_env = await db_handler.get_single_entry(
-                    database, Environment, key=exp.env_id, key_column="registration_id"
+                database, Environment, key=exp.env_id, key_column="registration_id"
             )
             benchmark_run.env_id = exp.env_id if "env_id" not in benchmark_run else benchmark_run.env_id
         else:
-
             # for the experiments, we need to register the environment first (e.g. for annotations, naming of the action space)
             if not db_handler.check_if_exists(database, Environment, key=benchmark_run.env_id, key_column="registration_id"):
                 # We lazily register the environment if it is not registered yet, this is only done once
@@ -98,28 +90,17 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
                 )
                 await db_handler.add_entry(database, Environment, database_env.model_dump())
             else:
-                # database_env = await db_handler.get_single_entry(
-                #     database, Environment, key=exp.env_id, key_column="registration_id"
-                # )                
                 database_env = await db_handler.get_single_entry(
                     database, Environment, key=benchmark_run.env_id, key_column="registration_id"
                 )
 
             # create and register a "dummy" experiment
             exp: Experiment = Experiment(
-<<<<<<< HEAD
                 exp_name=f"{benchmark_run.env_id}_{benchmark_run.benchmark_type}_Experiment",
                 env_id=benchmark_run.env_id,
                 framework="Random",
                 created_timestamp=int(time.time()),
             )
-=======
-                exp_name=f"{benchmark_run.env_id}_{benchmark_run.framework}_{benchmark_run.benchmark_type}_Experiment",
-                env_id=benchmark_run.env_id,
-                framework=benchmark_run.framework,
-                created_timestamp=int(time.time()))
-            
->>>>>>> 1434b6ff6bafe36939ef3cde7f7be80cdd86c804
             await db_handler.add_entry(database, Experiment, exp)
 
         # add the current checkpoint to the experiment
@@ -140,13 +121,8 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
                 environment_config=exp.environment_config,
                 n_envs=1,
                 norm_env_path=os.path.join(benchmark_run.path, benchmark_run.env_id),
-<<<<<<< HEAD
                 # this is how SB-Zoo does it, so we stick to it for easy cross-compatabily
                 additional_packages=database_env.additional_gym_packages,
-=======
-                # this is how SB-Zoo does it, so we stick to it for easy cross-compatibility
-                additional_packages=benchmark_run.additional_packages if "additional_packages" in benchmark_run else [],
->>>>>>> 1434b6ff6bafe36939ef3cde7f7be80cdd86c804
             )
             if "BabyAI" not in benchmark_run.env_id
             else gym.make(benchmark_run.env_id, render_mode="rgb_array")
@@ -207,8 +183,6 @@ def encode_video(renders: np.ndarray, path: str) -> None:
     Encodes renders of shape [n_frames, height, width, 3] into a .mp4 video and
     saves it at path.
     """
-    print("renders", renders.shape)
-    print(renders)
     # Create video in H264 format
     out = cv2.VideoWriter(
         f"{path}.mp4",
@@ -222,31 +196,12 @@ def encode_video(renders: np.ndarray, path: str) -> None:
         out.write(render)
     out.release()
 
-def encode_video(renders: np.ndarray, path: str) -> None:
-    """
-    Encodes renders of shape [n_frames, height, width, 3] into a .mp4 video and
-    saves it at path.
-    """
-    # Create a temporary file to store the game dump
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".trace") as temp_file:
-        temp_trace_file = temp_file.name
-
-    # Save the renders to the temporary trace file
-    with open(temp_trace_file, "wb") as f:
-        for render in renders:
-            f.write(render.tobytes())
-
-    # Use the gfootball library to convert the trace file to a video
-    script_helpers.ScriptHelpers().dump_to_video(temp_trace_file, output_file=f"{path}.mp4")
-
-    # Remove the temporary trace file
-    os.remove(temp_trace_file)
 
 async def generate_data(benchmark_dicts: List[Dict]):
     """
     Main async method, do all your calls that need to be awaited here.
-    :param benchmark_dicts: List of benchmark dictionary configurations
-    :return: None
+    :param benchmark_dicts:
+    :return:
     """
     requests = []
 
@@ -257,7 +212,7 @@ async def generate_data(benchmark_dicts: List[Dict]):
             f"{benchmark_run.env_id}_{benchmark_run.benchmark_type}_{benchmark_run.benchmark_id}_{benchmark_run.checkpoint_step}"
         )
 
-        # Skip processing if data already exists
+        # Skip processing
         if os.path.isdir(f"{DATA_ROOT_DIR}/episodes/{os.path.splitext(save_file_name)[0]}"):
             skipped += 1
             continue
@@ -265,7 +220,9 @@ async def generate_data(benchmark_dicts: List[Dict]):
         # Otherwise, run the benchmark
         requests.append(benchmark_run)
 
-    print(f"Skipped pre-processing for {skipped} benchmarks because data already exists. Remove data to trigger re-processing.")
+    print(
+        f"Skipped pre-processing for {skipped} benchmarks because data already exists. Remove data to trigger re-processing."
+    )
     if len(requests) > 0:
         print(f"Running processing for {len(requests)} benchmarks.")
 
@@ -287,19 +244,26 @@ async def generate_data(benchmark_dicts: List[Dict]):
                 save_episode[name] = episode_data[name][episode_idx]
             os.makedirs(dir_name, exist_ok=True)
             np.savez(f"{dir_name}/benchmark_{episode_idx}.npz", **save_episode)
-            os.makedirs(f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}", exist_ok=True)
-            np.save(f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}/rewards_{episode_idx}.npy", np.cumsum(episode_data["rewards"][episode_idx]))
- 
+            os.makedirs(
+                f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}",
+                exist_ok=True,
+            )
+            np.save(
+                f"{DATA_ROOT_DIR}/rewards/{os.path.splitext(save_file_name)[0]}/rewards_{episode_idx}.npy",
+                np.cumsum(episode_data["rewards"][episode_idx]),
+            )
+
             # Save uncertainty data if available (for now, just use entropy from info dict)
             if "infos" in episode_data:
-                os.makedirs(f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}", exist_ok=True)
-                np.save(f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}/uncertainty_{episode_idx}.npy", np.array([info["entropy"] for info in episode_data["infos"][episode_idx]]))
-        print('episode renders : ',episode_data['renders'][0])
-        print('episode infos :',episode_data['infos'][0])
-        print("episode observations : ", episode_data["obs"][0])
+                os.makedirs(
+                    f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}",
+                    exist_ok=True,
+                )
+                np.save(
+                    f"{DATA_ROOT_DIR}/uncertainty/{os.path.splitext(save_file_name)[0]}/uncertainty_{episode_idx}.npy",
+                    np.array([info["entropy"] for info in episode_data["infos"][episode_idx]]),
+                )
 
-
-        print(episode_data.keys())
         # Create video
         for episode_idx, renders in enumerate(episode_data["renders"]):
             dir_name = f"{DATA_ROOT_DIR}/renders/{os.path.splitext(save_file_name)[0]}"
@@ -315,7 +279,11 @@ async def generate_data(benchmark_dicts: List[Dict]):
             custom_thumbnail_creator = get_custom_thumbnail_creator(benchmark_run.env_id)
             if custom_thumbnail_creator is not None:
                 # Create custom thumbnail with env id and seed (info the info dict)
-                save_image = custom_thumbnail_creator(benchmark_run.env_id, episode_data["infos"][episode_idx][0].get("seed", None), episode_data["actions"][episode_idx])
+                save_image = custom_thumbnail_creator(
+                    benchmark_run.env_id,
+                    episode_data["infos"][episode_idx][0].get("seed", None),
+                    episode_data["actions"][episode_idx],
+                )
             else:
                 save_image = renders[0]
                 # Save first frame of the episode, first convert to BGR
@@ -323,8 +291,8 @@ async def generate_data(benchmark_dicts: List[Dict]):
 
             cv2.imwrite(f"{dir_name}/{episode_idx}.jpg", save_image)
 
-        # delete original save_file, not needed anymore
-        #os.remove(f"{DATA_ROOT_DIR}/{BENCHMARK_DIR}/{save_file_name}")
+        # # delete original save_file, not needed anymore
+        # os.remove(f"{DATA_ROOT_DIR}/{BENCHMARK_DIR}/{save_file_name}")
 
         # Delete the last episode, as it is not complete (TODO: Fix this)
         episode_idx = len(episode_data["dones"]) - 1
@@ -347,5 +315,4 @@ async def generate_data(benchmark_dicts: List[Dict]):
             os.remove(uncertainty_file)
         os.remove(renders_file)
         os.remove(thumbnails_file)
-
 

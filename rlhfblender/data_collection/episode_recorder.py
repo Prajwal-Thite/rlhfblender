@@ -98,11 +98,9 @@ class EpisodeRecorder:
         infos_buffer = []
         probs_buffer = []
 
-        seed = np.random.randint(0,2000)
+        seed = random.randint(0, 2000)
         if not isinstance(env, VecEnv):
-            if isinstance(env, gym.Env):
-                env.reset(seed=seed)
-            observations, info = env.reset(seed=seed)
+            observations, _ = env.reset(seed=seed)
             rewards = 0
             dones = False
             infos = {}
@@ -115,7 +113,7 @@ class EpisodeRecorder:
             dones = np.expand_dims(dones, axis=0)
             infos = [infos]
         else:
-            env.reset()
+            env.seed(seed=seed)
             observations = env.reset()
             rewards = np.zeros(n_envs)
             dones = np.zeros(n_envs, dtype=bool)
@@ -151,14 +149,13 @@ class EpisodeRecorder:
 
             if not isinstance(env, VecEnv):
                 # If not dummy vec env, we need to reset ourselves
-                if dones.any():
-                    seed = env.np_random.integers(0, 1000000)
+                if dones:
+                    seed = random.randint(0, 1000000)
                     if isinstance(env, VecEnv):
-                        env.reset(seed=seed)
-                        observations, info = env.reset(seed=seed)
-                    else:
-                        env.reset(seed=seed)
+                        env.seed(seed=seed)
                         observations = env.reset()
+                    else:
+                        observations, _ = env.reset(seed=seed)
                     if isinstance(env.observation_space, gym.spaces.Dict) and "mission" in observations.keys():
                         infos[0]["mission"] = observations["mission"]
                         infos[0]["seed"] = seed
@@ -239,12 +236,9 @@ class EpisodeRecorder:
                     tmp_info_buffer.append(info)
 
             infos_buffer.append(np.squeeze(tmp_info_buffer) if len(tmp_info_buffer) > 0 else np.squeeze(infos))
-            print("case1")
+
             if render:
-                #print(env.get_images())
-                render_frame = env.render(mode="rgb_array")
-                #print(render_frame.shape)
-                print(render_frame)
+                render_frame = env.render()
                 render_buffer.append(np.squeeze(render_frame))
             total_steps += 1
 
@@ -257,8 +251,7 @@ class EpisodeRecorder:
                 infos = [infos]
             else:
                 observations, rewards, dones, infos = env.step(actions)
-                terminated,truncated = dones,dones
-        print("case 2")
+
         # Add last render frame to buffer
         if render:
             render_frame = env.render()
@@ -281,7 +274,7 @@ class EpisodeRecorder:
                 infos_buffer[np.argmin([i["value"] for i in infos_buffer])]["label"] = "Min. Value"
                 infos_buffer[np.argmax(rew_buffer)]["label"] = "Max. Step Reward"
                 infos_buffer[np.argmin(rew_buffer)]["label"] = "Min. Step Reward"
-        print("case 3")
+
         if render:
             render_buffer = np.array(render_buffer)
         else:

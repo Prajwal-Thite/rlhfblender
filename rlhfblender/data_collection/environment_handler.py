@@ -1,6 +1,6 @@
 import importlib
 import os
-from typing import Optional, Union, List
+from typing import Optional, Union
 
 import gymnasium as gym
 from stable_baselines3.common.env_util import make_vec_env
@@ -11,26 +11,26 @@ from stable_baselines3.common.vec_env import (
     VecNormalize,
 )
 
-import gfootball.env as football_env
 from rlhfblender.data_models.global_models import Environment
 from rlhfblender.utils.utils import get_wrapper_class
 
 
 def get_environment(
-    env_name: str = "GFootball-11_vs_11_easy_stochastic-SMM-v0",
+    env_name: str = "CartPole-v0",
     n_envs: int = 1,
     environment_config: Optional[dict] = None,
     norm_env_path: Union[str, None] = None,
     additional_packages: list = (),
 ) -> VecEnv:
     """
-    Get the Google Football environment by name.
+    Get the gym environment by name.
+    Code partially taken from SB Baselines 3
     :param env_name: (str) Name of the environment
     :param n_envs: (int) Number of parallel environments
-    :param additional_packages: (list) Additional packages to import
+    :param additional_packages: (dict) Additional packages to import
     :param environment_config: (dict) Environment configuration
     :param norm_env_path: (str) Path to the normalized environment
-    :return: VecEnv
+    :return:
     """
     if environment_config is None:
         environment_config = {}
@@ -38,33 +38,8 @@ def get_environment(
         importlib.import_module(env_module)
 
     env_wrapper = get_wrapper_class(environment_config)
-    env_id = 'GFootball-11_vs_11_easy_stochastic-SMM-v0'
-    def create_gfootball_env():
-        render_mode = environment_config.get('render', False)
-        if render_mode:
-            render_mode = "rgb_array"
-        else:
-            render_mode = "rgb_array"
-
-        return football_env.create_environment(
-            env_name=env_name,
-            render="rgb_array",
-            logdir=environment_config.get('logdir', '/tmp/football'),
-            dump_frequency=environment_config.get('dump_frequency', 1),
-            write_goal_dumps=environment_config.get('write_goal_dumps', False),
-            write_full_episode_dumps=environment_config.get('write_full_episode_dumps', False),
-            stacked=environment_config.get('stacked', True),
-#            representation=environment_config.get('representation', 'extracted'),
-            rewards=environment_config.get('rewards', 'scoring'),
-            write_video=environment_config.get('write_video', False),
-            number_of_left_players_agent_controls=environment_config.get('number_of_left_players_agent_controls', 1),
-            number_of_right_players_agent_controls=environment_config.get('number_of_right_players_agent_controls', 0),
-            channel_dimensions=environment_config.get('channel_dimensions', (96, 72)),
-            other_config_options=environment_config.get('other_config_options', {})
-        )
 
     vec_env_cls = DummyVecEnv
-<<<<<<< HEAD
 
     env_kwargs = environment_config.get("env_kwargs", None)
     # add render_mode = 'rgb_array' to env_kwargs
@@ -73,19 +48,13 @@ def get_environment(
     else:
         env_kwargs["render_mode"] = "rgb_array"
 
-=======
->>>>>>> 1434b6ff6bafe36939ef3cde7f7be80cdd86c804
     env = make_vec_env(
-        create_gfootball_env,
+        env_name,
         n_envs=n_envs,
         wrapper_class=env_wrapper,
-<<<<<<< HEAD
         env_kwargs=env_kwargs,
-=======
->>>>>>> 1434b6ff6bafe36939ef3cde7f7be80cdd86c804
         vec_env_cls=vec_env_cls,
         vec_env_kwargs=environment_config.get("vec_env_kwargs", None),
-        env_kwargs=environment_config.get("env_kwargs", None)   
     )
 
     if "vec_env_wrapper" in environment_config.keys():
@@ -119,16 +88,14 @@ def initial_space_info(space: gym.spaces.Space) -> dict:
     Get the initial space info for the environment, in particular the tag dict which is used for the
     the naming of the observation and action space in the user interface.
     :param space:
-    :return: dict
+    :return:
     """
     shape = (space.n,) if isinstance(space, gym.spaces.Discrete) else space.shape
 
     tag_dict = {}
     if shape is not None:
-        try:
-            tag_dict = {f"{i}": i for i in range(shape[-1])}
-        except:
-            pass
+        tag_dict = {f"{i}": i for i in range(shape[-1])}
+
     return {
         "label": f"{space.__class__.__name__}({shape!s})",
         "shape": shape,
@@ -138,40 +105,26 @@ def initial_space_info(space: gym.spaces.Space) -> dict:
 
 
 def initial_registration(
-    env_id: str = "11_vs_11_stochastic",
+    env_id: str = "CartPole-v0",
     entry_point: Optional[str] = "",
-    additional_gym_packages: Optional[List[str]] = (),
+    additional_gym_packages: Optional[list] = (),
     gym_env_kwargs: Optional[dict] = None,
 ) -> Environment:
     """
     Register the environment with the database.
-    :param env_id: (str) The name of the environment
-    :param entry_point: (Optional[str]) The entry point for the environment
-    :param additional_gym_packages: (Optional[list]) Additional gym packages to import
-    :param gym_env_kwargs: (Optional[dict]) Additional keyword arguments for the environment
-    :return: Environment object
+    :param database: (Database) The database to register the environment with (see database_handler.py)
+    :param env_name: (str) The name of the environment
+    :return: None
     """
+
     if len(additional_gym_packages) > 0:
         for env_module in additional_gym_packages:
             importlib.import_module(env_module)
 
-    # Override the environment creation if it's Google Football
-    env = football_env.create_environment(
-        env_name=env_id,
-        render=gym_env_kwargs.get('render', False),
-        logdir=gym_env_kwargs.get('logdir', '/tmp/football'),
-        dump_frequency=gym_env_kwargs.get('dump_frequency', 1),
-        write_goal_dumps=gym_env_kwargs.get('write_goal_dumps', False),
-        write_full_episode_dumps=gym_env_kwargs.get('write_full_episode_dumps', False),
-        stacked=gym_env_kwargs.get('stacked', False),
-        representation=gym_env_kwargs.get('representation', 'extracted'),
-        rewards=gym_env_kwargs.get('rewards', 'scoring'),
-        write_video=gym_env_kwargs.get('write_video', False),
-        number_of_left_players_agent_controls=gym_env_kwargs.get('number_of_left_players_agent_controls', 1),
-        number_of_right_players_agent_controls=gym_env_kwargs.get('number_of_right_players_agent_controls', 0),
-        channel_dimensions=gym_env_kwargs.get('channel_dimensions', (96, 72)),
-        other_config_options=gym_env_kwargs.get('other_config_options', {})
-    )
+    if entry_point != "":
+        gym.register(id=env_id, entry_point=entry_point)
+
+    env = gym.make(env_id, render_mode="rgb_array", **gym_env_kwargs)
 
     return Environment(
         env_name=env_id,
