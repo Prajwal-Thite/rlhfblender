@@ -1,0 +1,5 @@
+
+
+stud_height = input().split()
+for n in range(0, len(stud_height)):
+    stud_height [n] = int(stud_height[n])

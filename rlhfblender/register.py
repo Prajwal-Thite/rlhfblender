@@ -90,6 +90,8 @@ async def register_env(
     env.env_name = env_name
     env.description = env_description
 
+    #check if the environement in scenarios on the football directory and if so register it
+    
     if not await db_handler.check_if_exists(database, Environment, key=id, key_column="registration_id"):
         await db_handler.add_entry(
             database,
