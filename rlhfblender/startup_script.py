@@ -11,6 +11,8 @@ import traceback
 from rlhfblender.data_collection import framework_selector as framework_selector
 from rlhfblender.register import register_env, register_experiment
 from rlhfblender.utils.data_generation import generate_data
+from scripts.cov_mp4v_to_openH264 import convert_mp4v_to_openh264
+
 
 if __name__ == "__main__":
     os.makedirs("data", exist_ok=True)
@@ -86,3 +88,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(traceback.format_exc())
         print("Error running Highway-Env benchmarks: ", e)
+
+    # Conversion of mp4v to openh264
+    input_folder = "data/renders/GFootball-academy_pass_and_shoot_with_keeper-SMM-v0_-1_-1"
+    output_folder = "data/renders/GFootball-academy_pass_and_shoot_with_keeper-SMM-v0_-1_-1"
+    convert_mp4v_to_openh264(input_folder, output_folder)

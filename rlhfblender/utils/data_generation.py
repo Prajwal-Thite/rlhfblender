@@ -74,7 +74,12 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
             exp: Experiment = await db_handler.get_single_entry(
                 database, Experiment, key=benchmark_run.benchmark_id, key_column="exp_name"
             )
+            database_env = await db_handler.get_single_entry(
+                    database, Environment, key=exp.env_id, key_column="registration_id"
+            )
+            benchmark_run.env_id = exp.env_id if "env_id" not in benchmark_run else benchmark_run.env_id
         else:
+
             # for the experiments, we need to register the environment first (e.g. for annotations, naming of the action space)
             if not db_handler.check_if_exists(database, Environment, key=benchmark_run.env_id, key_column="registration_id"):
                 # We lazily register the environment if it is not registered yet, this is only done once
@@ -86,6 +91,9 @@ async def run_benchmark(request: List[BenchmarkRequestModel]) -> list[Experiment
                 )
                 await db_handler.add_entry(database, Environment, database_env.model_dump())
             else:
+                # database_env = await db_handler.get_single_entry(
+                #     database, Environment, key=exp.env_id, key_column="registration_id"
+                # )                
                 database_env = await db_handler.get_single_entry(
                     database, Environment, key=benchmark_run.env_id, key_column="registration_id"
                 )
@@ -182,7 +190,7 @@ def encode_video(renders: np.ndarray, path: str) -> None:
     # Create video in H264 format
     out = cv2.VideoWriter(
         f"{path}.mp4",
-        cv2.VideoWriter_fourcc(*"avc1"),
+        cv2.VideoWriter_fourcc(*"mp4v"),
         24,
         (renders.shape[2], renders.shape[1]),
     )
@@ -288,7 +296,7 @@ async def generate_data(benchmark_dicts: List[Dict]):
             cv2.imwrite(f"{dir_name}/{episode_idx}.jpg", save_image)
 
         # delete original save_file, not needed anymore
-        os.remove(f"{DATA_ROOT_DIR}/{BENCHMARK_DIR}/{save_file_name}")
+        #os.remove(f"{DATA_ROOT_DIR}/{BENCHMARK_DIR}/{save_file_name}")
 
         # Delete the last episode, as it is not complete (TODO: Fix this)
         episode_idx = len(episode_data["dones"]) - 1

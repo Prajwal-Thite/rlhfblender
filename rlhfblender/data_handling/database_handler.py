@@ -87,7 +87,12 @@ async def get_single_entry(
     formatted_key = str(key) if isinstance(key, int) else '"' + str(key) + '"'
     query = "SELECT * FROM " + table_name + " WHERE " + column + " = " + formatted_key
     row = await cursor.fetch_one(query)
+    if row is not None:
+        return model(**{**row})
+    else:
+        raise ValueError(f"No entry found for {key} in {model.__tablename__}")
     return model(**{**row})
+
 
 
 async def check_if_exists(
