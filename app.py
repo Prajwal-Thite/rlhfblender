@@ -25,6 +25,7 @@ from rlhfblender.data_models.global_models import (
 )
 from rlhfblender.routes import data
 
+
 # from fastapi_sessions.backends.implementations import InMemoryBackend
 # from fastapi_sessions.frontends.implementations import SessionCookie, CookieParameters
 # from session import SessionData, BasicVerifier
@@ -65,10 +66,11 @@ async def startup():
     app.state.feedback_translator = FeedbackTranslator(None, None)
 
     # Run the startup script as a separate process
-    startup_script_path = os.path.join("rlhfblender", "startup_script.py")
+    #startup_script_path = os.path.join("rlhfblender", "startup_script.py") -original
+    startup_script_path = os.path.join("startup_script.py")
     if os.path.isfile(startup_script_path):
         print("Running startup script...")
-        os.system(f"python3 {startup_script_path}")
+        os.system(f"python {startup_script_path}")
     else:
         print("No startup script found. Skipping...")
     print("Startup script finished.")
@@ -318,7 +320,9 @@ def main(args):
             reload=False,
             access_log=False,
             workers=1,
-        )
+        ) 
+
+    
 
 
 if __name__ == "__main__":

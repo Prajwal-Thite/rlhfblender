@@ -1,9 +1,19 @@
-python register_gfootball.py --env GFootball-v0 --env-gym-entrypoint football.gfootball:GFootball-11_vs_11_easy_stochastic-SMM-v0 --env-display-name "Google Football" --additional-gym-packages gfootball --env-description "Google Research Football environment for reinforcement learning." --exp GFootballExperiment --project RLHF-Blender --env-kwargs truncate:True max_episode_steps:1000
+# to register the env
+python -m rlhfblender.register --env GFootball-academy_pass_and_shoot_with_keeper-SMM-v0 --env-gym-entrypoint my_football_env:FootballEnv --additional-gym-packages gfootball 
 
-gym.register(
-    id="test/11_vs_11_stochastic-v0",
-    entry_point="football.gfootball:GFootball-11_vs_11_easy_stochastic-SMM-v0'",
-    disable_env_checker=True,
-)
+python -m rlhfblender.register --env GFootball-academy_pass_and_shoot_with_keeper-SMM-v0 --env-gym-entrypoint my_football_env:FootballEnv --additional-gym-packages gfootball
+# to generate the data
+python -m rlhfblender.generate_data --env GFootball-academy_pass_and_shoot_with_keeper-SMM-v0 --exp TestExperiment --random --num-episodes 2                                                                                                                                                 
 
-del gym.envs.registry[gym.envs.registry.env_specs.pop('football.gfootball:GFootball-11_vs_11_easy_stochastic-SMM-v0').id]
+
+# to run the backend
+python app.py
+
+
+# to run the front end
+cd rlhfblender-ui
+npm start
+
+
+#webisite local host
+http://localhost:3000/?studyMode=configure

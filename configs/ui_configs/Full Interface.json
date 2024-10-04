@@ -23,7 +23,7 @@
         "demonstration": true,
         "correction": true,
         "featureSelection": true,
-        "text": false
+        "text": false 
     },
     "max_ranking_elements": "10",
     "samplingStrategy": "sequential",

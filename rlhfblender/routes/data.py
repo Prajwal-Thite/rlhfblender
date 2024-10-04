@@ -2,6 +2,8 @@ import os
 from enum import Enum
 from typing import Any, Dict, List, Union
 
+import logging
+
 import numpy as np
 from databases import Database
 from fastapi import APIRouter, File, Request, UploadFile
@@ -72,7 +74,7 @@ class BenchmarkRequestModel(BenchmarkModel):
 
 
 class VideoRequestModel(BenchmarkModel):
-    episode_id: int = -1
+    episode_id: int = -1    
 
 
 class BenchmarkResponseModel(BaseModel):
@@ -138,25 +140,27 @@ async def get_uncertainty(
 
     return uncertainty.tolist()
 
+logging.basicConfig(filename='video_paths.log', level=logging.INFO)
 
 @router.get("/get_video", response_class=FileResponse)
 async def get_video(
+    
     env_name: str,
     benchmark_id: int,
     checkpoint_step: int,
-    episode_num: int,
+    episode_num: Union[int, str],
 ):
-    # Replace with your video file path
+
     return FileResponse(
         os.path.join(
             "data",
             "renders",
             f"{env_name}_{benchmark_id}_{checkpoint_step}",
-            f"{episode_num}.mp4",
-        ),
+            f"{episode_num}_openh264.mp4",
+        ),        
         media_type="video/mp4",
     )
-
+    
 
 @router.get("/get_thumbnail", response_class=FileResponse)
 async def get_thumbnail(
@@ -246,7 +250,7 @@ async def get_actions_for_episode(request: DetailRequest):
         ),
         allow_pickle=True,
     )
-
+         
     return episode_benchmark_data["actions"].tolist()
 
 
@@ -354,9 +358,9 @@ async def give_feedback(request: Request):
     """
     feedback = UnprocessedFeedback(**await request.json())
 
-    print("UNPROCESSED FEEDBACK: ", feedback)
+    #print("UNPROCESSED FEEDBACK: ", feedback)
 
-    request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
+    await request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
 
 
 @router.post("/submit_current_feedback")
@@ -367,6 +371,11 @@ async def submit_current_feedback(request: Request):
     session_id = request.query_params.get("session_id", None)
     if session_id is None:
         return "No session id given"
+    
+    # #Get text feedback from request body
+    # request_data = await request.json()
+    # text_feedback = request_data.get("text_feedback","")
+
     request.app.state.feedback_translator.submit(session_id)
     return "Feedback submitted"
 

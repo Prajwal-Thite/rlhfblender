@@ -1,0 +1,15 @@
+score
+demo
+text type object at abckend
+
+feeback
+
+feedback model - use text - Jason object
+
+save as backend
+csv file
+
+other feedback type would be consistent
+
+log
+

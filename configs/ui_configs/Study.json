@@ -19,7 +19,7 @@
         "demonstration": true,
         "correction": true,
         "featureSelection": true,
-        "text": true
+        "text": false
     },
     "max_ranking_elements": 5,
     "samplingStrategy": "sequential",

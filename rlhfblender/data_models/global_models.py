@@ -1,4 +1,5 @@
 from typing import List
+from typing import Union
 
 from pydantic import BaseModel, field_validator
 
@@ -185,4 +186,5 @@ class EpisodeID(BaseModel):
     benchmark_type: str = ""  # e.g.: trained
     benchmark_id: int = -1  # e.g.: 1
     checkpoint_step: int = -1  # e.g.: 1000000
-    episode_num: int = -1
+    episode_num: Union[int, str]
+    #int = -1

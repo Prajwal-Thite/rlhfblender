@@ -1,9 +1,10 @@
 import enum
-from typing import List, Union
+from typing import List, Union, Optional
 
 from pydantic import BaseModel
 
 from rlhfblender.data_models.global_models import EpisodeID
+from rlhfblender.data_collection.feedback_classifier import classify_feedback,extract_json_from_response
 
 
 class FeedbackType(enum.Enum):
@@ -19,6 +20,7 @@ class FeedbackType(enum.Enum):
     goal = "goal"
     featureSelection = "featureSelection"
     other = "other"
+    textual = "textual"
 
     def __str__(self):
         # just return the enum value
@@ -48,7 +50,7 @@ class UnprocessedFeedback(BaseModel):
     targets: List[dict] = []
     granularity: str = "episode"
     timestamp: int = -1
-    text_feedback: str = ""  # e.g.: "The agent is doing well in the beginning, but then it fails to collect the key."
+    textFeedback: Optional[str] = None  # e.g.: "The agent is doing well in the beginning, but then it fails to collect the key."
 
     # Evaluative feedback content
     score: float | None = 0.0  # e.g.: 0.5
@@ -107,6 +109,21 @@ class Granularity(FeedbackDimension):
     episode = 3
     entire = 4
 
+class TextFeedbackType(FeedbackDimension):
+    critique = 1
+    suggestion = 2
+    observation = 3
+    comparison = 4
+    mission = 5
+    prioritization = 6        
+    miscellaneous = 7   
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
 
 class Origin(enum.Enum):
     # This is the target origin. Offline and online targets both are observed, generated targets materialize by human
@@ -156,7 +173,10 @@ class StandardizedFeedbackType(BaseModel):
     relation: Relation = Relation.relative
     content: Content = Content.instance
     granularity: Granularity = Granularity.episode
-
+    #text
+    txt_feedback: str | None = None
+    txt_score: float | None = None
+    txt_feedback_type: TextFeedbackType = TextFeedbackType.critique
     # hash function
     def __hash__(self):
         return hash(
@@ -166,6 +186,9 @@ class StandardizedFeedbackType(BaseModel):
                 self.relation,
                 self.content,
                 self.granularity,
+                self.txt_feedback,
+                self.txt_feedback_type,
+                self.txt_score,
             )
         )
 
@@ -184,8 +207,7 @@ class RelativeEvaluation(BaseModel):
 class Instruction(BaseModel):
     # An instruction might either be an action or a goal
     action: Union[int, List[float]] = None
-    goal: dict = None
-
+    goal: dict | Union[List[str],List[dict]] = None 
 
 class RelativeInstruction(Instruction):
     # A relative instruction is a preference over actions or goals
@@ -194,8 +216,8 @@ class RelativeInstruction(Instruction):
 
 
 class Description(BaseModel):
-    feature_selection: List[dict] | str = None  # A list of feature selections or a file path as a string
-    feature_importance: Union[float, List[float]] | str = None  # A list of feature importances or a file path as a string
+    feature_selection: List[dict] | str | List[str] = None  # A list of feature selections or a file path as a string
+    feature_importance: Union[float, List[float]] | str = None  # A list of feature importances or a file path as a string 
 
 
 class RelativeDescription(Description):
@@ -208,11 +230,12 @@ class StandardizedFeedback(BaseModel):
     feedback_id: int = -1
     feedback_timestamp: int = -1
     feedback_type: StandardizedFeedbackType = StandardizedFeedbackType()
-
+    #text
+    # text_feedback_stan: str | None = None
 
 class AbsoluteFeedback(StandardizedFeedback):
     target: Target = None
-    content: Union[Evaluation, Instruction, Description] = None
+    content: Union[Evaluation, Instruction, Description] = None    
 
 
 class RelativeFeedback(StandardizedFeedback):
@@ -274,3 +297,35 @@ def get_origin(origin: str) -> Origin:
     elif origin == "generated":
         return Origin.generated
     return Origin.offline
+
+
+async def get_text_feedback(feedback: str, all_feedback: dict) -> dict:
+    # print('function is running')
+    # print(feedback)     
+    raw_feed = await classify_feedback(feedback, all_feedback)
+    classification_result = await extract_json_from_response(raw_feed)
+    print(classification_result)
+    return classification_result
+
+
+def get_feedback_type(feedback_type: str) -> TextFeedbackType:
+    if feedback_type == 'Critique':
+        return TextFeedbackType.critique
+    elif feedback_type == 'Suggestion':
+        return TextFeedbackType.suggestion
+    elif feedback_type == 'Observation':
+        return TextFeedbackType.observation
+    elif feedback_type == 'Comparison':
+        return TextFeedbackType.comparison
+    elif feedback_type == 'Mission':
+        return TextFeedbackType.mission
+    elif feedback_type == 'Prioritization':
+        return TextFeedbackType.prioritization
+    elif feedback_type == 'Miscellaneous':
+        return TextFeedbackType.miscellaneous 
+
+
+
+
+
+
