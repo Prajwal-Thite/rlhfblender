@@ -1,12 +1,3 @@
 [submodule "rlhfblender_demo_models"]
 	path = rlhfblender_demo_models
 	url = https://github.com/ymetz/rlhfblender_demo_models
-[submodule "rlhfblender-ui"]
-	path = rlhfblender-ui
-	url = https://github.com/ymetz/rlhfblender-ui
-[submodule "football_env"]
-	path = football_env
-	url = https://github.com/Prajwal-Thite/football.git
-[submodule "football"]
-	path = football
-	url = https://github.com/Prajwal-Thite/football.git
