@@ -21,13 +21,21 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER ./setup.py ${CODE_DIR}/rlhfblender/setup.py
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./rlhfblender/version.txt ${CODE_DIR}/rlhfblender/rlhfblender/version.txt
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./rlhfblender/ ${CODE_DIR}/rlhfblender/rlhfblender/
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./configs/ ${CODE_DIR}/rlhfblender/configs/
-COPY --chown=$MAMBA_USER:$MAMBA_USER ./rlhfblender_model/ ${CODE_DIR}/rlhfblender/rlhfblender_model/
+# COPY --chown=$MAMBA_USER:$MAMBA_USER ./rlhfblender_model/ ${CODE_DIR}/rlhfblender/rlhfblender_model/
+COPY --chown=$MAMBA_USER:$MAMBA_USER startup_script.py ${CODE_DIR}/rlhfblender/
+COPY --chown=$MAMBA_USER:$MAMBA_USER scripts/ ${CODE_DIR}/rlhfblender/scripts/
+COPY --chown=$MAMBA_USER:$MAMBA_USER data/ ${CODE_DIR}/rlhfblender/data/
+COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/rlhfblender.db
+COPY --chown=$MAMBA_USER:$MAMBA_USER firebase-credentials.json ${CODE_DIR}/rlhfblender/firebase-credentials.json
+
+
+
 
 RUN cd ${CODE_DIR}/rlhfblender && \
     pip install -e .[tests,docs] && \
     # Use headless version for docker
     #pip uninstall -y opencv-python && \
-    pip install opencv-python-headless && \
+    pip install opencv-python-headless openai firebase-admin && \
     pip cache purge
 
 WORKDIR ${CODE_DIR}/rlhfblender

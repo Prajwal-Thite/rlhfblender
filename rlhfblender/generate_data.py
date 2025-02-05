@@ -157,6 +157,7 @@ if __name__ == "__main__":
         for checkpoint in checkpoints
     ]
 
+    print(benchmark_dicts)
     try:
         asyncio.run(generate_data(benchmark_dicts))
     except Exception as e:

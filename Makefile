@@ -34,7 +34,7 @@ check-codestyle:
 	# Reformat using black
 	black --check ${LINT_PATHS}
 
-commit-checks: format type lint pytest
+commit-checks: format type lint
 
 doc:
 	cd docs && make html

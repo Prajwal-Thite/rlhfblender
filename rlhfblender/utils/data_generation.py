@@ -253,26 +253,13 @@ def split_data(data: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
 def encode_video(renders: np.ndarray, path: str) -> None:
     """Encodes renders into a .mp4 video and saves it at path."""
     # Create video in H264 format
-    try:
-        out = cv2.VideoWriter(
-            f"{path}.mp4",
-            cv2.VideoWriter_fourcc(*"avc1"),
-            24,
-            (renders.shape[2], renders.shape[1]),
-        )
-    except Exception:
-        print("AVC1 codec not available, using MP4V codec instead.")
-        try:
-            out = cv2.VideoWriter(
-                f"{path}.mp4",
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                24,
-                (renders.shape[2], renders.shape[1]),
-            )
-        except Exception as e:
-            print(f"Error creating video writer: {e}")
+    out = cv2.VideoWriter(
+        f"{path}.mp4",
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        24,
+        (renders.shape[2], renders.shape[1]),
+    )
     for render in renders:
-        # Convert to BGR
         render = cv2.cvtColor(render, cv2.COLOR_RGB2BGR)
         out.write(render)
     out.release()
@@ -375,8 +362,8 @@ async def generate_data(benchmark_dicts: list[dict]):
             save_image = cv2.cvtColor(save_image, cv2.COLOR_RGB2BGR)
             cv2.imwrite(f"{dir_name}/{episode_idx}.jpg", save_image)
 
-        # Delete original save file
-        os.remove(f"data/{BENCHMARK_DIR}/{save_file_name}")
+        # # Delete original save file
+        # os.remove(f"data/{BENCHMARK_DIR}/{save_file_name}")
 
         # Delete the last episode if incomplete
         episode_idx = len(episode_data["dones"]) - 1

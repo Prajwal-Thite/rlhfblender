@@ -23,9 +23,14 @@ from rlhfblender.data_models.feedback_models import (
     UnprocessedFeedback,
     get_granularity,
     get_target,
+    # Text Feedback
+    get_text_feedback,
+    get_feedback_type,
+    
 )
 from rlhfblender.data_models.global_models import Environment, Experiment
-from rlhfblender.logger.logger import Logger
+from rlhfblender.logger.csv_logger import CSVLogger
+from rlhfblender.logger.json_logger import JSONLogger
 
 
 class FeedbackTranslator:
@@ -36,16 +41,29 @@ class FeedbackTranslator:
     : param env: The environment object
     """
 
-    def __init__(self, experiment: Experiment, env: Environment, logger: Logger = None):
+    def __init__(self, experiment: Experiment, env: Environment):
         self.experiment = experiment
         self.env = env
 
         self.feedback_id = 0
 
-        self.logger = logger
+        self.logger = JSONLogger(experiment, env, "feedback") if experiment is not None and env is not None else None
         self.feedback_buffer = []
+        #Episode caching
+        self.feedback_cache = {}
+    
+    async def cache_feedback(self, episode_id: str, feedback: str):
+        if episode_id not in self.feedback_cache:
+            self.feedback_cache[episode_id] = []
+        self.feedback_cache[episode_id].append(feedback)
 
-    def set_translator(self, experiment: Experiment, env: Environment, logger: Logger) -> str:
+    def get_cached_feedback(self, episode_id: str):
+        return self.feedback_cache.get(episode_id, [])
+    
+    async def get_all_cached_feedback(self):
+        return self.feedback_cache        
+
+    def set_translator(self, experiment: Experiment, env: Environment) -> str:
         """
         Sets the experiment and environment for the translator
         :param experiment: The experiment object
@@ -54,8 +72,12 @@ class FeedbackTranslator:
         """
         self.experiment = experiment
         self.env = env
-        self.logger = logger
+
+        self.logger = CSVLogger(experiment, env, "feedback")
+
         self.reset()
+
+        return self.logger.logger_id
 
     def reset(self) -> None:
         """
@@ -63,9 +85,83 @@ class FeedbackTranslator:
         :return:
         """
         self.feedback_id = 0
+        self.logger.reset()
         self.feedback_buffer = []
 
-    def give_feedback(self, session_id: str, feedback: UnprocessedFeedback) -> StandardizedFeedback:
+    @classmethod
+    def map_feedback_type_to_standardized(cls,feedback_type):
+        mapping = {
+            "Critique": {
+                "intention": Intention.evaluate,
+                "actuality": Actuality.observed,
+                "relation": Relation.absolute,
+                "content": Content.feature,
+            },
+            "Suggestion": {
+                "intention": Intention.instruct,
+                "actuality": Actuality.observed,
+                "relation": Relation.absolute,
+                "content": Content.instance,
+            },
+            "Observation": {
+                "intention": Intention.describe,
+                "actuality": Actuality.observed,
+                "relation": Relation.absolute,
+                "content": Content.instance,
+            },
+            "Comparison": {
+                "intention": Intention.evaluate,
+                "actuality": Actuality.observed,
+                "relation": Relation.relative,
+                "content": Content.feature,
+            },
+            "Mission": {
+                "intention": Intention.instruct,
+                "actuality": Actuality.hypothetical,
+                "relation": Relation.absolute,
+                "content": Content.feature,
+            },
+            "Prioritization": {
+                "intention": Intention.instruct,
+                "actuality": Actuality.observed,
+                "relation": Relation.relative,
+                "content": Content.feature,
+            },
+            "Miscellaneous": {
+                "intention": Intention.none,
+                "actuality": Actuality.hypothetical,
+                "relation": Relation.absolute,
+                "content": Content.feature,
+            },            
+        }
+        return mapping.get(feedback_type, mapping["Critique"])
+
+    @classmethod
+    def get_content_type(cls,txt_feed_type):
+        goal_preferences = [
+            {"goal": item["goal"], "priority": item["priority"]}
+            for item in txt_feed_type["goal_preferences"]
+        ]                
+        if txt_feed_type["category"] == "Critique":
+            return Evaluation(score=txt_feed_type["score"])
+        elif txt_feed_type["category"] == "Suggestion":
+            # goal = txt_feed_type["goal"] if isinstance(txt_feed_type["goal"], dict) else txt_feed_type["goal"]
+            return Instruction(action=txt_feed_type["action"], goal=txt_feed_type["goal"])
+        elif txt_feed_type["category"] == "Observation":
+            return Description(feature_selection=txt_feed_type["feature_selection"], feature_importance=txt_feed_type["feature_importance"])
+        elif txt_feed_type["category"] == "Comparison":
+            return RelativeEvaluation(preferences=txt_feed_type["preferences"])
+        elif txt_feed_type["category"] == "Mission":
+            goal = txt_feed_type["goal"] if isinstance(txt_feed_type["goal"], dict) else txt_feed_type["goal"]
+            return Instruction(action=txt_feed_type["action"], goal=goal)
+        elif txt_feed_type["category"] == "Prioritization":
+            return RelativeInstruction(action_preferences=txt_feed_type["action_preferences"], goal_preferences=goal_preferences)
+        elif txt_feed_type["category"] == "Miscellaneous":
+            return Evaluation(score=txt_feed_type["score"])
+        else:
+            return Evaluation(score=txt_feed_type["score"])
+
+    async def give_feedback(self, session_id: str, feedback: UnprocessedFeedback) -> StandardizedFeedback:
         """
         We get either a single number or a list of numbers as feedback. We need to translate this into a common format
         called StandardizedFeedback
@@ -74,7 +170,7 @@ class FeedbackTranslator:
         :return: (StandardizedFeedback) The standardized feedback
         """
         return_feedback = None
-
+        print("this is the initial feedback text : ", feedback.text_feedback)
         if feedback.feedback_type == FeedbackType.rating:
             return_feedback = AbsoluteFeedback(
                 feedback_id=self.feedback_id,
@@ -163,37 +259,34 @@ class FeedbackTranslator:
                 ),
             )
         elif feedback.feedback_type == FeedbackType.text:
-            # More comprenhesive logic will follow
+            current_episode_id = feedback.targets[0]['target_id']
+            await self.cache_feedback(current_episode_id, feedback.text_feedback)
+            all_feedback = await self.get_all_cached_feedback()            
+            # print('textual feedback is running')
+            # print(feedback.textFeedback)
+            final_feedback = await get_text_feedback(feedback.text_feedback,all_feedback)
+            feedback_type_mapping = self.map_feedback_type_to_standardized(final_feedback["category"])
             return_feedback = AbsoluteFeedback(
                 feedback_id=self.feedback_id,
                 feedback_timestamp=feedback.timestamp,
                 feedback_type=StandardizedFeedbackType(
-                    intention=Intention.describe,
-                    actuality=Actuality.observed,
-                    relation=Relation.absolute,
-                    content=Content.instance,
-                    granularity=Granularity.entire,
+                    intention=feedback_type_mapping["intention"],
+                    actuality=feedback_type_mapping["actuality"],
+                    relation=feedback_type_mapping["relation"],
+                    content=feedback_type_mapping["content"],
+                    granularity= Granularity.episode,
+                    txt_feedback_type = get_feedback_type(final_feedback["category"]),
+                    txt_score = final_feedback["score"],
+                    txt_feedback= feedback.text_feedback,
                 ),
                 target=get_target(feedback.targets[0], feedback.granularity),
-                content=Text(text=feedback.text_feedback),
-            )
-        elif feedback.feedback_type == FeedbackType.meta:
-            # Meta Actions such as submit, skip, etc. can also be interpreted as (implicit) feedback
-            return_feedback = AbsoluteFeedback(
-                feedback_id=self.feedback_id,
-                feedback_timestamp=feedback.timestamp,
-                feedback_type=StandardizedFeedbackType(
-                    intention=Intention.none,
-                    actuality=Actuality.observed,
-                    relation=Relation.absolute,
-                    content=Content.meta,
-                    granularity=Granularity.entire,
-                ),
+                content= self.get_content_type(final_feedback)
             )
 
         self.feedback_id += 1
 
         self.logger.log_raw(feedback)
+        self.logger.log(return_feedback)
 
         self.feedback_buffer.append(return_feedback)
 

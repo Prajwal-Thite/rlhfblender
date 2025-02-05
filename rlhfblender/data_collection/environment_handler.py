@@ -148,11 +148,7 @@ def initial_space_info(space: gym.spaces.Space, save_low_high=False, action_name
 
     tag_dict = {}
     if shape is not None:
-        if action_names is not None:
-            assert len(action_names) == shape[-1], "Action names must match the number of actions"
-            tag_dict = {f"{i}": action_names[i] for i in range(shape[-1])}
-        else:
-            tag_dict = {f"{i}": i for i in range(shape[-1])}
+        tag_dict = {f"{i}": i for i in range(shape[-1])}
 
     return_dict = {
         "label": f"{space.__class__.__name__}({shape!s})",

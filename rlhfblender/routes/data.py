@@ -214,6 +214,17 @@ async def get_single_step_details(request: SingleStepDetailRequest):
     reward = episode_benchmark_data["rewards"][request.step]
     info = episode_benchmark_data["infos"][request.step]
 
+    # print(
+    #     "THIS IS RETURNED",
+    #     {
+    #         "action_distribution": action_distribution,
+    #         "action": action,
+    #         "reward": reward,
+    #         "info": info,
+    #         "action_space": action_space,
+    #     },
+    # )
+
     return convert_to_serializable(
         {
             "action_distribution": action_distribution,
@@ -312,14 +323,10 @@ async def reset_sampler(request: Request):
     experiment: Experiment = await db_handler.get_single_entry(database, Experiment, key=experiment_id)
     environment = await db_handler.get_single_entry(database, Environment, key=experiment.env_id, key_column="registration_id")
 
-    session_id = request.app.state.logger.reset(experiment, environment)
-    request.app.state.sampler.set_sampler(
-        experiment, environment, request.app.state.logger, sampling_strategy=sampling_strategy
-    )
-    request.app.state.feedback_translator.set_translator(experiment, environment, request.app.state.logger)
+    request.app.state.sampler.set_sampler(experiment, environment, sampling_strategy)
 
     return {
-        "session_id": session_id,
+        "session_id": request.app.state.feedback_translator.set_translator(experiment, environment),
         "environment_id": experiment.env_id,
     }
 
@@ -334,18 +341,46 @@ async def get_all_episodes(request: Request):
     return request.app.state.sampler.get_full_episode_list()
 
 
+@router.get("/sample_episodes", response_model=list[EpisodeID])
+async def sample_episodes(request: Request):
+    """
+    Samples episodes from the database
+    """
+    num_episodes = request.query_params.get("num_episodes", 1)
+    num_episodes = int(num_episodes)
+    return request.app.state.sampler.sample(batch_size=num_episodes)
+
+
 @router.post("/give_feedback")
 async def give_feedback(request: Request):
     """
     Provides feedback for a given episode
     """
+    # ui_feedback = await request.json()
+    # if not ui_feedback:
+    #     return "Empty feedback"
+
+    # for feedback in ui_feedback:
+    #     feedback = UnprocessedFeedback(**feedback)
+    #     await request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
+
+    # return "Feedback received"
+
     ui_feedback = await request.json()
+    print("Received feedback:", ui_feedback)  # Debug print
+    
     if not ui_feedback:
         return "Empty feedback"
 
-    for feedback in ui_feedback:
-        feedback = UnprocessedFeedback(**feedback)
-        request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
+    if isinstance(ui_feedback, list):
+        for feedback_item in ui_feedback:
+            print("Processing feedback item:", feedback_item)  # Debug print
+            feedback = UnprocessedFeedback(**feedback_item)
+            print("Feedback:", feedback)  # Debug print
+            await request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
+    else:
+        feedback = UnprocessedFeedback(**ui_feedback)
+        await request.app.state.feedback_translator.give_feedback(feedback.session_id, feedback)
 
     return "Feedback received"
 

@@ -26,20 +26,15 @@ class Logger:
         self.env = env
         self.suffix = suffix
 
-        self.logger_id = ""
+        self.logger_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_" + exp.exp_name + "_" + suffix
         # Replace all spaces with underscores
-        self.logger_id = ""
+        self.logger_id = self.logger_id.replace(" ", "_").replace(":", "-").replace("/", "-")
 
-    def reset(self, exp: Experiment, env: Environment, suffix: str = None) -> str:
+    def reset(self) -> None:
         """
         Resets the logger
         :return: None
         """
-        self.exp = exp
-        self.env = env
-        if suffix is not None:
-            self.suffix = suffix
-
         self.logger_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_" + self.exp.exp_name + "_" + self.suffix
         # Replace all spaces with underscores
         self.logger_id = self.logger_id.replace(" ", "_").replace(":", "-").replace("/", "-")

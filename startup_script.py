@@ -16,8 +16,8 @@ from scripts.cov_mp4v_to_openH264 import convert_mp4v_to_openh264
 # When enabling other data, make sure to download models as well
 gen_data = {
     "ALE_Breakout-v5": False,
-    "BabyAI-MiniBossLevel-v0": True,
-    "roundabout-v0": True,
+    "BabyAI-MiniBossLevel-v0": False,
+    "roundabout-v0": False,
     "GFootball-academy_pass_and_shoot_with_keeper-SMM-v0": True
 }
 
