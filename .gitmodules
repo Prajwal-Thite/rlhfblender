@@ -1,6 +1,3 @@
-[submodule "rlhfblender_model"]
-	path = rlhfblender_model
-	url = https://github.com/ymetz/rlhfblender_model
 [submodule "football"]
 	path = football
 	url = https://github.com/Prajwal-Thite/football.git
