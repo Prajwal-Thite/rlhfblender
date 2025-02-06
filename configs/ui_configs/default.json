@@ -25,7 +25,7 @@
         "featureSelection": false,
         "text": true
     },
-    "max_ranking_elements": 5,
+    "max_ranking_elements": 2,
     "samplingStrategy": "sequential",
     "customInput": ""
 }
