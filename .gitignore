@@ -123,5 +123,3 @@ dmypy.json
 .idea
 .vscode
 
-# Ingnore Cache folders from Git
-data
