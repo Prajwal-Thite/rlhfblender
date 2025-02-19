@@ -18,8 +18,8 @@
         "actionLabels": false
     },
     "feedbackComponents": {
-        "rating": true,
-        "ranking": true,
+        "rating": false,
+        "ranking": false,
         "demonstration": false,
         "correction": false,
         "featureSelection": false,

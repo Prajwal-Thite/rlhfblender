@@ -259,28 +259,41 @@ class FeedbackTranslator:
                 ),
             )
         elif feedback.feedback_type == FeedbackType.text:
-            current_episode_id = feedback.targets[0]['target_id']
-            await self.cache_feedback(current_episode_id, feedback.text_feedback)
-            all_feedback = await self.get_all_cached_feedback()            
-            # print('textual feedback is running')
-            # print(feedback.textFeedback)
-            final_feedback = await get_text_feedback(feedback.text_feedback,all_feedback)
-            feedback_type_mapping = self.map_feedback_type_to_standardized(final_feedback["category"])
+            # current_episode_id = feedback.targets[0]['target_id']
+            # await self.cache_feedback(current_episode_id, feedback.text_feedback)
+            # all_feedback = await self.get_all_cached_feedback()            
+            # # print('textual feedback is running')
+            # # print(feedback.textFeedback)
+            # final_feedback = await get_text_feedback(feedback.text_feedback,all_feedback)
+            # feedback_type_mapping = self.map_feedback_type_to_standardized(final_feedback["category"])
+            # return_feedback = AbsoluteFeedback(
+            #     feedback_id=self.feedback_id,
+            #     feedback_timestamp=feedback.timestamp,
+            #     feedback_type=StandardizedFeedbackType(
+            #         intention=feedback_type_mapping["intention"],
+            #         actuality=feedback_type_mapping["actuality"],
+            #         relation=feedback_type_mapping["relation"],
+            #         content=feedback_type_mapping["content"],
+            #         granularity= Granularity.episode,
+            #         txt_feedback_type = get_feedback_type(final_feedback["category"]),
+            #         txt_score = final_feedback["score"],
+            #         txt_feedback= feedback.text_feedback,
+            #     ),
+            #     target=get_target(feedback.targets[0], feedback.granularity),
+            #     content= self.get_content_type(final_feedback)
+            # )
             return_feedback = AbsoluteFeedback(
                 feedback_id=self.feedback_id,
                 feedback_timestamp=feedback.timestamp,
                 feedback_type=StandardizedFeedbackType(
-                    intention=feedback_type_mapping["intention"],
-                    actuality=feedback_type_mapping["actuality"],
-                    relation=feedback_type_mapping["relation"],
-                    content=feedback_type_mapping["content"],
-                    granularity= Granularity.episode,
-                    txt_feedback_type = get_feedback_type(final_feedback["category"]),
-                    txt_score = final_feedback["score"],
-                    txt_feedback= feedback.text_feedback,
+                    intention=Intention.describe,
+                    actuality=Actuality.observed,
+                    relation=Relation.absolute,
+                    content=Content.instance,
+                    granularity=Granularity.entire,
                 ),
                 target=get_target(feedback.targets[0], feedback.granularity),
-                content= self.get_content_type(final_feedback)
+                content=Text(text=feedback.text_feedback),
             )
 
         self.feedback_id += 1
