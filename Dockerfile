@@ -26,7 +26,8 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER startup_script.py ${CODE_DIR}/rlhfblender/
 COPY --chown=$MAMBA_USER:$MAMBA_USER scripts/ ${CODE_DIR}/rlhfblender/scripts/
 COPY --chown=$MAMBA_USER:$MAMBA_USER data/ ${CODE_DIR}/rlhfblender/data/
 COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/rlhfblender.db
-
+COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/credentials.json
+COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/client_secrets.json
 
 
 
