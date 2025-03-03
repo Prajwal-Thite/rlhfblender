@@ -26,16 +26,16 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER startup_script.py ${CODE_DIR}/rlhfblender/
 COPY --chown=$MAMBA_USER:$MAMBA_USER scripts/ ${CODE_DIR}/rlhfblender/scripts/
 COPY --chown=$MAMBA_USER:$MAMBA_USER data/ ${CODE_DIR}/rlhfblender/data/
 COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/rlhfblender.db
-COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/credentials.json
-COPY --chown=$MAMBA_USER:$MAMBA_USER rlhfblender.db ${CODE_DIR}/rlhfblender/client_secrets.json
-
+# COPY --chown=$MAMBA_USER:$MAMBA_USER credentials.json ${CODE_DIR}/rlhfblender/credentials.json
+# COPY --chown=$MAMBA_USER:$MAMBA_USER client_secrets.json ${CODE_DIR}/rlhfblender/client_secrets.json
+COPY --chown=$MAMBA_USER:$MAMBA_USER service-account-key.json ${CODE_DIR}/rlhfblender/service-account-key.json
 
 
 RUN cd ${CODE_DIR}/rlhfblender && \
     pip install -e .[tests,docs] && \
     # Use headless version for docker
     #pip uninstall -y opencv-python && \
-    pip install opencv-python-headless openai pydrive && \
+    pip install opencv-python-headless openai google-api-python-client google-auth-httplib2 google-auth-oauthlib && \
     pip cache purge
 
 WORKDIR ${CODE_DIR}/rlhfblender

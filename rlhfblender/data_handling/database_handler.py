@@ -85,8 +85,10 @@ async def get_single_entry(
     table_name = model.__name__ if table_name is None else table_name
     column = "id" if key_column is None else key_column
     formatted_key = str(key) if isinstance(key, int) else '"' + str(key) + '"'
-    query = "SELECT * FROM " + table_name + " WHERE " + column + " = " + formatted_key
-    row = await cursor.fetch_one(query)
+    # query = "SELECT * FROM " + table_name + " WHERE " + column + " = " + formatted_key
+    # row = await cursor.fetch_one(query)
+    query = f"SELECT * FROM {table_name} WHERE {column} = :key"
+    row = await cursor.fetch_one(query, {"key": key})
     return model(**{**row})
 
 
@@ -105,8 +107,10 @@ async def check_if_exists(
     table_name = model.__name__ if table_name is None else table_name
     column = "id" if key_column is None else key_column
     formatted_key = str(key) if isinstance(key, int) else '"' + str(key) + '"'
-    query = "SELECT * FROM " + table_name + " WHERE " + column + " = " + formatted_key
-    row = await cursor.fetch_one(query)
+    # query = "SELECT * FROM " + table_name + " WHERE " + column + " = " + formatted_key
+    # row = await cursor.fetch_one(query)
+    query = f"SELECT * FROM {table_name} WHERE {column} = :key"
+    row = await cursor.fetch_one(query, {"key": key})
     return row is not None
 
 
@@ -186,8 +190,10 @@ async def update_entry(
         else:
             query += field + "=" + '"' + str(data_field) + '",'
     formatted_key = str(key) if isinstance(key, int) else '"' + str(key) + '"'
-    query = query[:-1] + " WHERE " + key_column + " = " + formatted_key
-    await cursor.execute(query)
+    # query = query[:-1] + " WHERE " + key_column + " = " + formatted_key
+    # await cursor.execute(query)
+    query = query[:-1] + f" WHERE {key_column} = :key"
+    await cursor.execute(query, {"key": key})
 
 
 async def delete_entry(
@@ -207,5 +213,7 @@ async def delete_entry(
     """
     table_name = model.__name__ if table_name is None else table_name
     formatted_key = str(key) if isinstance(key, int) else '"' + str(key) + '"'
-    query = "DELETE FROM " + table_name + " WHERE " + key_column + " = " + formatted_key
-    await cursor.execute(query)
+    # query = "DELETE FROM " + table_name + " WHERE " + key_column + " = " + formatted_key
+    # await cursor.execute(query)
+    query = f"DELETE FROM {table_name} WHERE {key_column} = :key"
+    await cursor.execute(query, {"key": key})

@@ -123,3 +123,5 @@ dmypy.json
 .idea
 .vscode
 
+# Google Cloud Platform
+service-account-key.json

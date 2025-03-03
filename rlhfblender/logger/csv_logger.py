@@ -1,8 +1,11 @@
 import asyncio
 import csv
 import os
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+# from pydrive.auth import GoogleAuth
+# from pydrive.drive import GoogleDrive
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 from pydantic import BaseModel
 
 from rlhfblender.data_models import StandardizedFeedback, UnprocessedFeedback
@@ -29,19 +32,13 @@ class CSVLogger(Logger):
         self.logger_csv_path = "logs/" + self.logger_id + ".csv"
         self.raw_logger_csv_path = "logs/" + self.logger_id + "_raw.csv"
 
-        # Initialize Google Drive with simpler auth
-        gauth = GoogleAuth()
-        gauth.LocalWebserverAuth()
-        self.drive = GoogleDrive(gauth)
-
-        # Your shared folder ID from the Google Drive link
-        self.folder_id = "1TrlO9nllr8OoByWUoM-WqirV4DkKh7NB"  # Drive folder URL
-
-        # Create Google Drive files once
-        self.drive_file = self.drive.CreateFile({
-            'title': f'feedback_{self.logger_id}.csv',
-            'parents': [{'id': self.folder_id}]
-        })
+        # Service account setup
+        self.credentials = service_account.Credentials.from_service_account_file(
+            'service-account-key.json',
+            scopes=['https://www.googleapis.com/auth/drive.file']
+        )
+        self.drive_service = build('drive', 'v3', credentials=self.credentials)
+        self.folder_id = '18z-dZh0KMeBnSNT5g7oRWfoxYTzJ2quB'  # Your Google Drive folder ID
 
     def reset(self) -> None:
         """
@@ -77,7 +74,8 @@ class CSVLogger(Logger):
         """
         self.raw_feedback.append(feedback)
         _task = asyncio.create_task(self.dump_raw())
-        background_tasks.add(_task)
+        background_tasks.add(_task)       
+        
 
     def read_raw(self) -> list[UnprocessedFeedback]:
         """
@@ -101,15 +99,38 @@ class CSVLogger(Logger):
                 for feedback in self.feedback:
                     writer.writerow(feedback.dict())
 
-            # Upload to Google Drive shared folder
-            file_drive = self.drive.CreateFile({
-                'title': f'feedback_{self.logger_id}.csv',
-                'parents': [{'id': self.folder_id}]
-            })
-            self.drive_file.SetContentFile(self.logger_csv_path)
-            self.drive_file.Upload()
+            try:
+                # Search for existing file
+                response = self.drive_service.files().list(
+                    q=f"name='{self.logger_id}.csv' and '{self.folder_id}' in parents",
+                    spaces='drive'
+                ).execute()
 
-        self.feedback = []
+                if response.get('files'):
+                    # Update existing file
+                    file_id = response['files'][0]['id']
+                    media = MediaFileUpload(self.logger_csv_path, mimetype='text/csv')
+                    self.drive_service.files().update(
+                        fileId=file_id,
+                        media_body=media
+                    ).execute()
+                else:
+                    # Create new file if doesn't exist
+                    file_metadata = {
+                        'name': f'{self.logger_id}.csv',
+                        'parents': [self.folder_id]
+                    }
+                    media = MediaFileUpload(self.logger_csv_path, mimetype='text/csv')
+                    self.drive_service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id'
+                    ).execute()
+
+            except Exception as e:
+                print(f"Drive upload error: {str(e)}")                     
+
+            self.feedback = []
 
     async def dump_raw(self) -> None:
         """

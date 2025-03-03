@@ -7,7 +7,7 @@ from typing import Dict, Any
 from openai import AsyncOpenAI
 
 # Initialize the client using OpenAI API key
-api_key = os.environ["OPENAI_API_KEY"]
+api_key = 'os.environ["OPENAI_API_KEY"]'
 client = AsyncOpenAI(api_key=api_key)
 
 
